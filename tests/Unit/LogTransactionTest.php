@@ -1,10 +1,11 @@
 <?php
 
+use App\DataTransferObjects\TransactionDto;
 use App\Enums\CurrencyType;
 use App\Exceptions\DuplicateTransactionException;
-use App\Http\Controllers\TransactionController;
 use App\Models\Transaction;
 use App\Models\User;
+use App\Services\TransactionsService;
 
 /**
  * This unit test is for the logTransaction() function in TransactionController
@@ -21,10 +22,10 @@ it('throws a DuplicateTransactionException when a duplicate transaction is logge
     $this->post('/transactions', $payload);
     $this->assertEquals(1, Transaction::where('user_id', $user->id)->count());
 
-    $transactionController = app()->make(TransactionController::class);
-    $payload['reference_number'] = $transactionController->generateReferenceNumber($user->id);
+    $transactionController = app()->make(TransactionsService::class);
+    $payload['reference_number'] = Transaction::generateReferenceNumber();
     $payload['user_id'] = $user->id;
-    $transactionController->logTransaction($payload);
+    $transactionController->logTransaction(TransactionDto::fromStoreTransactionRequest($payload));
 
 })->throws(DuplicateTransactionException::class);
 
@@ -32,7 +33,7 @@ it('handles high volumes of transactions efficiently', function () {
 
     $payload = [
         'amount' => 100.0,
-        'currency_type' => 'fiat',
+        'currency_type' => CurrencyType::Fiat->value,
     ];
 
     $startTime = microtime(true);
@@ -41,10 +42,10 @@ it('handles high volumes of transactions efficiently', function () {
     for ($i = 0; $i < 1000; $i++) {
 
         $user = User::factory()->create(); // Simulate an authenticated user
-        $transactionController = app()->make(TransactionController::class);
-        $payload['reference_number'] = $transactionController->generateReferenceNumber($user->id);
+        $transactionController = app()->make(TransactionsService::class);
+        $payload['reference_number'] = Transaction::generateReferenceNumber();
         $payload['user_id'] = $user->id;
-        $transactionController->logTransaction($payload);
+        $transactionController->logTransaction(TransactionDto::fromStoreTransactionRequest($payload));
 
     }
 
